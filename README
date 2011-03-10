@@ -16,6 +16,11 @@ apache::vhost { "mediawiki":
 #   $ensure  - defaults to 'present'
 #   $content - quoted content or a template
 #   $source  - file to grab with the VirtualHost information
+#   $vhost   - the hostname to use for this vhost, defacts to $name
+#   $docroot - docroot to use, defaults to /srv/www/vhosts/$vhostname/htdocs - this needs to be abstracted out as it is a SuSE path
+#   $cgiroot - cgiroot to use, defaults to /srv/www/vhosts/$vhostname/cgi-bin - this needs to be abstracted out as it is a SuSE path
+#   $contactEmail - contactEmail to use in vhost config
+#   $tempplate - template to use, default is "apache/vhost.conf.erb", not used if $content is defined
 #
 # Actions:
 #   sets up a vhost
