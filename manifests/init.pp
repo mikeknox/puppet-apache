@@ -8,36 +8,9 @@
 # Sample Usage: include apache
 #
 class apache {
+    include apache::params
 
-    # $basedir is the root dir of the httpd config file tree
-    $basedir = $operatingsystem ? {
-        /SuSE/  => "/etc/apache2",
-        default => "/etc/httpd",
-    }
-
-    notice "apache:basedir: $basedir"
-    $vhostdir = $operatingsystem ? {
-        /SuSE/  => "$basedir/conf.d",
-        default => "$basedir/vhosts.d",
-    }
-
-    $docrootdir = $operatingsystem ? {
-        /SuSE/  => "/srv/www/htdocs",
-        default => "/var/www/html",
-    }
-
-    # $conffile specifies identity of the global httpd config file
-    $conffile = $operatingsystem ? {
-        /SuSE/   => "$basedir/httpd.conf",
-        default  => "$basedir/conf/httpd.conf",
-    }
-
-	$apachesvc = $operatingsystem ? {
-        /SuSE/  => "apache2",
-        default => "httpd",
-	}
-
-    package { "$apachesvc": 
+    package { "$apache::params::apachesvc": 
         alias   => "apachePackage",
     } # package
     
@@ -46,7 +19,7 @@ class apache {
     } # File
 
     if $operatingsystem =~ /SuSE/ {
-        file {"$basedir/server-tuning.conf":
+        file {"$apache::params::basedir/server-tuning.conf":
             content => template("apache/server-tuning.conf-$operatingsystem.erb"),
             require => Package["apachePackage"],
             notify  => Service["apacheService"],
@@ -55,44 +28,44 @@ class apache {
 
     file {
         # determined by $operatingsystem
-        "$conffile":
+        "$apache::params::conffile":
             content => template("apache/httpd.conf-$operatingsystem.erb"),
             require => Package["apachePackage"],
             notify  => Service["apacheService"],
             links   => follow;
-        "/etc/sysconfig/$apachesvc":
-            content => template("apache/sysconfig-$apachesvc.erb"),
+        "/etc/sysconfig/$apache::params::apachesvc":
+            content => template("apache/sysconfig-${apache::params::apachesvc}.erb"),
             require => Package["apachePackage"],
             notify  => Service["apacheService"];
         # favicon
-        "$docrootdir/favicon.ico":
+        "$apache::params::docrootdir/favicon.ico":
             source  => "puppet:///modules/apache/favicon.ico",
             require => Package["apachePackage"];
         # where we stash vhosts across all distros
-        "$basedir/vhosts.d/":
+        "$apache::params::basedir/vhosts.d/":
             mode    => "755",
             ensure  => "directory",
             require => Package["apachePackage"];
         # where module configuration goes
-        "$basedir/modules.d/":
+        "$apache::params::basedir/modules.d/":
             mode    => "755",
             ensure  => "directory",
             require => Package["apachePackage"];
         # where configuration goes
-        "$basedir/conf.d/":
+        "$apache::params::basedir/conf.d/":
             mode    => "755",
             ensure  => "directory",
             require => Package["apachePackage"];
-        "$basedir/listen.conf":
+        "$apache::params::basedir/listen.conf":
             mode    => "755",
             source  => "puppet:///modules/apache/listen.conf";
     } # file
 
-    service { "$apachesvc":
+    service { "$apache::params::apachesvc":
         enable     => true,
         ensure     => running,
         hasrestart => true,
-        restart    => $apachesvc ? {
+        restart    => $apache::params::apachesvc ? {
             /apache2/ => "/usr/sbin/apache2ctl graceful",
             default   => "/usr/sbin/apachectl graceful",
         },
@@ -110,7 +83,7 @@ class apache {
                     '': {
                         # no cotent means we grab a file
                         $Realsource = $source ? { '' => "puppet:///modules/apache/confs/$Realname.conf", default => $source }
-                        file { "$apache::basedir/$location/$Realname.conf":
+                        file { "$apache::params::basedir/$location/$Realname.conf":
                             ensure  => "present",
                             source  => "$Realsource",
                             require => Package["apachePackage"],
@@ -120,7 +93,7 @@ class apache {
 
                     default: {
                         # use a template to generate the content
-                        file { "$apache::basedir/$location/$Realname.conf":
+                        file { "$apache::params::basedir/$location/$Realname.conf":
                             ensure  => "present",
                             content => $content,
                             require => Package["apachePackage"],
@@ -131,7 +104,7 @@ class apache {
             } # present:
 
             absent: {
-                file { "$apache::basedir/$location/$Realname.conf":
+                file { "$apache::params::basedir/$location/$Realname.conf":
                     ensure => "absent",
                     notify => Service["apacheService"],
                 }
@@ -175,16 +148,16 @@ class apache {
         }
 
         $realdocroot = $docroot ? {
-            ''      => "/srv/www/vhosts/$vhostname/htdocs",
+            ''      => "$apache::params::baserootdir/vhosts/$vhostname/htdocs",
             default => $docroot,
         }
         $realcgiroot = $cgiroot ? {
-            ''      => "/srv/www/vhosts/$vhostname/cgi-bin",
+            ''      => "$apache::params::baserootdir/vhosts/$vhostname/cgi-bin",
             default => $cgiroot,
         }
 
         if ($docroot == '' or $cgiroot == '' ) {
-            file{["/srv/www/vhosts/$vhostname"]:
+            file{["$apache::params::baserootdir/vhosts/$vhostname"]:
                 ensure => directory,
                 mode   => 0755,
             }
@@ -215,7 +188,7 @@ class apache {
             source   => $source,
             location => "vhosts.d",
             filename => $name,
-            require  => File["$apache::basedir/vhosts.d/"],
+            require  => File["$apache::params::basedir/vhosts.d/"],
         } # apache::conf_shippet
     } # define apache::vhost
     
@@ -249,7 +222,7 @@ class apache {
             source   => $source,
             location => "conf.d",
             filename => $name,
-            require  => File["$apache::basedir/conf.d/"],
+            require  => File["$apache::params::basedir/conf.d/"],
         } # apache::conf_shippet
     } # define apache::module
 
